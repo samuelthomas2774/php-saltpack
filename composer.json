@@ -1,0 +1,20 @@
+{
+    "name": "samuelthomas2774/php-saltpack",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Saltpack\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SaltpackTests\\": "tests"
+        }
+    },
+    "require": {
+        "rybakit/msgpack": "^0.7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.2"
+    }
+}
