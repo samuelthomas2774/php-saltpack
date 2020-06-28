@@ -51,13 +51,14 @@ final class ArmorTest extends TestCase
 
     public function testStreamingArmoring(): void
     {
-        $options = [];
-        $chunk_length = 3;
+        $options = [
+            'stream_chunk_size' => $chunk_length = 3,
+        ];
 
         $expected = str_split(Armor::armor(self::INPUT_STRING, $options), $chunk_length);
         $result = [];
 
-        foreach (Armor::armorStream([self::INPUT_STRING], $options, $chunk_length) as $i => $encoded_chunk) {
+        foreach (Armor::armorStream([self::INPUT_STRING], $options) as $i => $encoded_chunk) {
             $result[] = $encoded_chunk;
         }
 
@@ -66,14 +67,15 @@ final class ArmorTest extends TestCase
 
     public function testStreamingDearmoring(): void
     {
-        $options = [];
+        $options = [
+            'stream_chunk_size' => $chunk_length = 3,
+        ];
         $armored = Armor::armor(self::INPUT_STRING, $options);
-        $chunk_length = 3;
 
         $expected = str_split(Armor::dearmor($armored, $options), $chunk_length);
         $result = [];
 
-        foreach (Armor::dearmorStream([$armored], $options, $chunk_length) as $i => $decoded_chunk) {
+        foreach (Armor::dearmorStream([$armored], $options) as $i => $decoded_chunk) {
             $result[] = $decoded_chunk;
         }
 

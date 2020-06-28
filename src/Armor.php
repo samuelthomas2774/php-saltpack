@@ -19,6 +19,11 @@ class Armor
     const BASE85_ALPHABET = '!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ' .
         '[\\]^_`abcdefghijklmnopqrstu';
 
+    // Also accept message type "MESSAGE"
+    // (should really be "ENCRYPTED MESSAGE", "SIGNED MESSAGE" or "DETACHED SIGNATURE")
+    const HEADER_REGEX = '/^[>\n\r\t ]*BEGIN[>\n\r\t ]+(([a-zA-Z0-9]+)[>\n\r\t ]+)?SALTPACK[>\n\r\t ]+(MESSAGE|ENCRYPTED[>\n\r\t ]+MESSAGE|SIGNED[>\n\r\t ]+MESSAGE|DETACHED[>\n\r\t ]+SIGNATURE)[>\n\r\t ]*$/';
+    const FOOTER_REGEX = '/^[>\n\r\t ]*END[>\n\r\t ]+(([a-zA-Z0-9]+)[>\n\r\t ]+)?SALTPACK[>\n\r\t ]+(MESSAGE|ENCRYPTED[>\n\r\t ]+MESSAGE|SIGNED[>\n\r\t ]+MESSAGE|DETACHED[>\n\r\t ]+SIGNATURE)[>\n\r\t ]*$/';
+
     /** The default options used by the ::armor/::dearmor methods. */
     const DEFAULT_OPTIONS = [
         'alphabet' => self::BASE62_ALPHABET,
@@ -27,6 +32,8 @@ class Armor
         'raw' => false,
         'shift' => false,
         'message_type' => 'MESSAGE',
+        'app_name' => null, // Application name (e.g. "KEYBASE")
+        'stream_chunk_size' => 256,
     ];
 
     /** Return the index of the specified +char+ in +alphabet+, raising an appropriate error if it is not found. */
@@ -83,25 +90,29 @@ class Armor
         $joined = implode("\n", array_map(function ($words) {
             return implode(' ', $words);
         }, $sentences));
-        $header = 'BEGIN SALTPACK ' . $options['message_type'] . '. ';
-        $footer = '. END SALTPACK ' . $options['message_type'] . '.';
+
+        $app = $options['app_name'] ? ' ' . $options['app_name'] : '';
+        $header = 'BEGIN' . $app . ' SALTPACK ' . $options['message_type'] . '. ';
+        $footer = '. END' . $app . ' SALTPACK ' . $options['message_type'] . '.';
 
         return $header . $joined . $footer;
     }
 
     /** Return the +input_bytes+ ascii-armored using the specified +options+ */
-    public static function armorStream(iterable $input, array $options = [], int $stream_chunk_size = 256): iterable
+    public static function armorStream(iterable $input, array $options = []): iterable
     {
+        $options = array_merge(self::DEFAULT_OPTIONS, $options);
+
+        $stream_chunk_size = $options['stream_chunk_size'];
         if ($stream_chunk_size < 1) {
             throw new \InvalidArgumentException('$stream_chunk_size must be at least 1');
         }
 
-        $options = array_merge(self::DEFAULT_OPTIONS, $options);
-
         $buffer = '';
 
-        $header = 'BEGIN SALTPACK ' . $options['message_type'] . '. ';
-        $footer = '. END SALTPACK ' . $options['message_type'] . '.';
+        $app = $options['app_name'] ? ' ' . $options['app_name'] : '';
+        $header = 'BEGIN' . $app . ' SALTPACK ' . $options['message_type'] . '. ';
+        $footer = '. END' . $app . ' SALTPACK ' . $options['message_type'] . '.';
 
         if (!$options['raw']) {
             $buffer .= $header;
@@ -195,16 +206,35 @@ class Armor
     }
 
     /** Decode the ascii-armored data from the specified +input_chars+ using the given +options+. */
-    public static function dearmor(string $input, array $options = []): string
+    public static function dearmor(
+        string $input, array $options = [], ?string &$remaining = null, ?array &$header_info = null
+    ): string
     {
         $options = array_merge(self::DEFAULT_OPTIONS, $options);
 
         if (!$options['raw']) {
-            list($header, $input, $footer) = explode('.', $input, 3);
-            // TODO: validate header and footer
+            list($header, $input, $footer, $remaining) = explode('.', $input, 4);
+
+            if (!preg_match(self::HEADER_REGEX, $header, $match)) {
+                throw new \Exception('Invalid header');
+            }
+
+            $header_info = [
+                'message_type' => $match[3],
+                'app_name' => $match[2],
+            ];
+
+            if (!preg_match(self::FOOTER_REGEX, $footer, $match)) {
+                throw new \Exception('Invalid footer');
+            }
+            if ($header_info['message_type'] !== $match[3] ||
+                $header_info['app_name'] !== $match[2]
+            ) {
+                throw new \Exception('Footer doesn\'t match header');
+            }
         }
 
-        $input = str_replace(' ', '', $input);
+        $input = str_replace(['>', "\n", "\r", "\t", ' '], '', $input);
         $chunks = str_split($input, $options['char_block_size']);
 
         $output = '';
@@ -216,18 +246,20 @@ class Armor
     }
 
     /** Decode the ascii-armored data from the specified +input_chars+ using the given +options+. */
-    public static function dearmorStream(iterable $input, array $options = [], int $stream_chunk_size = 256): iterable
+    public static function dearmorStream(iterable $input, array $options = [], ?array $header_info = null): iterable
     {
+        $options = array_merge(self::DEFAULT_OPTIONS, $options);
+
+        $stream_chunk_size = $options['stream_chunk_size'];
         if ($stream_chunk_size < 1) {
             throw new \InvalidArgumentException('$stream_chunk_size must be at least 1');
         }
-
-        $options = array_merge(self::DEFAULT_OPTIONS, $options);
 
         $output = '';
 
         $buffer = '';
         $header = null;
+        $header_match = null;
         $footer = null;
 
         foreach ($input as $i => $chunk) {
@@ -243,11 +275,26 @@ class Armor
                 $chunk = substr($buffer, $index + 1);
                 $buffer = '';
 
+                if (!preg_match(self::HEADER_REGEX, $header, $header_match)) {
+                    throw new \Exception('Invalid header');
+                }
+    
+                $header_info = [
+                    'message_type' => $header_match[3],
+                    'app_name' => $header_match[2],
+                ];
+
                 if (self::$debug) echo 'Read header: ' . $header . PHP_EOL;
             }
 
             if (!$options['raw'] && $footer !== null) {
                 $footer .= $chunk;
+
+                $remaining_index = strpos($footer, '.');
+                if ($remaining_index !== false) {
+                    $footer = substr($footer, 0, $remaining_index);
+                    break;
+                }
             }
 
             if (!$options['raw'] && $footer === null) {
@@ -255,13 +302,20 @@ class Armor
                 if ($index !== false) {
                     $footer = substr($chunk, $index + 1);
                     $chunk = substr($chunk, 0, $index);
-                    $buffer .= str_replace(' ', '', $chunk);
+                    $buffer .= str_replace(['>', "\n", "\r", "\t", ' '], '', $chunk);
+
+                    $remaining_index = strpos($footer, '.');
+                    if ($remaining_index !== false) {
+                        $footer = substr($footer, 0, $remaining_index);
+                        break;
+                    }
+
                     continue;
                 }
             }
 
             if ($options['raw'] || $footer === null) {
-                $buffer .= str_replace(' ', '', $chunk);
+                $buffer .= str_replace(['>', "\n", "\r", "\t", ' '], '', $chunk);
 
                 while (strlen($buffer) > $options['char_block_size']) {
                     $block = substr($buffer, 0, $options['char_block_size']);
@@ -293,7 +347,18 @@ class Armor
             throw new \Exception('Input stream doesn\'t contain a valid header and footer');
         }
 
-        if (!$options['raw'] && self::$debug) echo 'Read footer: ' . $footer . PHP_EOL;
+        if (!$options['raw']) {
+            if (!preg_match(self::FOOTER_REGEX, $footer, $match)) {
+                throw new \Exception('Invalid footer');
+            }
+            if ($header_match[3] !== $match[3] ||
+                $header_match[2] !== $match[2]
+            ) {
+                throw new \Exception('Footer doesn\'t match header');
+            }
+
+            if (self::$debug) echo 'Read footer: ' . $footer . PHP_EOL;
+        }
 
         while (strlen($output) >= $stream_chunk_size) {
             yield substr($output, 0, $stream_chunk_size);
