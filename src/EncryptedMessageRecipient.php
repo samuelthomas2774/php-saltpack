@@ -128,7 +128,7 @@ class EncryptedMessageRecipient
 
         // 14. Concatenate the last 32 bytes each box from steps 11 and 13. Take the SHA512 hash of that
         // concatenation. The recipient's MAC Key is the first 32 bytes of that hash.
-        return $this->mac_key = substr(hash('sha512', substr($box_1, -32) . substr($box_2, -32)), 0, 32);
+        return $this->mac_key = substr(hash('sha512', substr($box_1, -32) . substr($box_2, -32), true), 0, 32);
     }
 
     public function generateMacKeyForRecipient(
@@ -158,6 +158,6 @@ class EncryptedMessageRecipient
 
         // 14. Concatenate the last 32 bytes each box from steps 11 and 13. Take the SHA512 hash of that
         // concatenation. The recipient's MAC Key is the first 32 bytes of that hash.
-        return $this->mac_key = substr(hash('sha512', substr($box_1, -32) . substr($box_2, -32)), 0, 32);
+        return $this->mac_key = substr(hash('sha512', substr($box_1, -32) . substr($box_2, -32), true), 0, 32);
     }
 }

@@ -81,7 +81,7 @@ class EncryptedMessagePayload
         // and the payload secretbox itself.
         // 2. Compute the crypto_hash (SHA512) of the bytes from #1.
         return hash('sha512',
-            $header_hash . $payload_secretbox_nonce . ($final ? "\x00" : "\x01") . $payload_secretbox);
+            $header_hash . $payload_secretbox_nonce . ($final ? "\x01" : "\x00") . $payload_secretbox, true);
     }
 
     public function encode()

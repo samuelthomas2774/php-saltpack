@@ -72,7 +72,7 @@ class SignedMessagePayload
         // the payload chunk
 
         return self::PAYLOAD_SIGNATURE_PREFIX .
-            hash('sha512', $header_hash . pack('J', $index) . ($final ? "\x00" : "\x01") . $data);
+            hash('sha512', $header_hash . pack('J', $index) . ($final ? "\x01" : "\x00") . $data, true);
     }
 
     public function encode()

@@ -98,7 +98,7 @@ class EncryptedMessageHeader extends Header
 
         $encoded = MessagePack::pack($data);
 
-        $header_hash = hash('sha512', $encoded);
+        $header_hash = hash('sha512', $encoded, true);
 
         return [$header_hash, MessagePack::pack($encoded, PackOptions::FORCE_BIN)];
     }

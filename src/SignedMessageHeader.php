@@ -85,7 +85,7 @@ class SignedMessageHeader extends Header
 
         $encoded = MessagePack::pack($data);
 
-        $header_hash = hash('sha512', $encoded);
+        $header_hash = hash('sha512', $encoded, true);
 
         return [$header_hash, MessagePack::pack($encoded, PackOptions::FORCE_BIN)];
     }
@@ -110,7 +110,7 @@ class SignedMessageHeader extends Header
             throw new \Exception('Header $attached is true');
         }
 
-        $hash = hash('sha512', $this->hash . $data);
+        $hash = hash('sha512', $this->hash . $data, true);
         $sign_data = "saltpack detached signature\0" . $hash;
 
         return sodium_crypto_sign_detached($sign_data, $private_key);
@@ -122,7 +122,7 @@ class SignedMessageHeader extends Header
             throw new \Exception('Header $attached is true');
         }
 
-        $hash = hash('sha512', $this->hash . $data);
+        $hash = hash('sha512', $this->hash . $data, true);
         $sign_data = "saltpack detached signature\0" . $hash;
 
         if (!sodium_crypto_sign_verify_detached($signature, $sign_data, $public_key)) {
