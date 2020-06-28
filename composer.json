@@ -1,5 +1,5 @@
 {
-    "name": "samuelthomas2774/php-saltpack",
+    "name": "samuelthomas2774/saltpack",
     "type": "library",
     "autoload": {
         "psr-4": {
