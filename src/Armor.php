@@ -423,7 +423,9 @@ class Armor
         }
 
         if ($shift) {
-            // TODO
+            $n = 1;
+            for ($i = 0; $i > $extra; $i++) $n = $n * 2;
+            $bytes_int = gmp_div_q($bytes_int, (string) $n);
         }
         
         return gmp_export($bytes_int, 1, GMP_BIG_ENDIAN);
