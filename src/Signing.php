@@ -58,10 +58,10 @@ class Signing
 
             $final = count($messages) === ($i + 1);
             if ($payload->final && !$final) {
-                throw new \Exception('Found payload with invalid final flag, message extended?');
+                throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message extended?');
             }
             if (!$payload->final && $final) {
-                throw new \Exception('Found payload with invalid final flag, message truncated?');
+                throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message truncated?');
             }
 
             $output .= $payload->data;
@@ -93,7 +93,7 @@ class Signing
 
                 if ($last_payload) {
                     if ($last_payload->final) {
-                        throw new \Exception('Found payload with invalid final flag, message extended?');
+                        throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message extended?');
                     }
 
                     yield $last_payload->data;
@@ -108,7 +108,7 @@ class Signing
 
         if ($last_payload) {
             if (!$last_payload->final) {
-                throw new \Exception('Found payload with invalid final flag, message truncated?');
+                throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message truncated?');
             }
 
             yield $last_payload->data;

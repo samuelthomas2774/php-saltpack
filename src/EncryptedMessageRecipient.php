@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Saltpack;
 
+use BadMethodCallException;
+
 class EncryptedMessageRecipient
 {
     const PAYLOAD_KEY_BOX_NONCE_PREFIX_V2 = 'saltpack_recipsb';
@@ -44,7 +46,7 @@ class EncryptedMessageRecipient
         if ($key === 'anonymous') return $this->anonymous;
         if ($key === 'mac_key') return $this->mac_key;
 
-        throw new \Exception('Unknown property "' . $key . '"');
+        throw new BadMethodCallException('Unknown property "' . $key . '"');
     }
 
     /** @private */
@@ -86,7 +88,7 @@ class EncryptedMessageRecipient
     ): ?string
     {
         // PHP's sodium extension doesn't support crypto_box_beforenm and crypto_box_open_afternm
-        if ($secret) throw new \Exception('Not supported');
+        if ($secret) throw new BadMethodCallException('Not supported');
 
         $keypair = sodium_crypto_box_keypair_from_secretkey_and_publickey(
             $recipient_private_key, $ephemeral_public_key
@@ -103,7 +105,7 @@ class EncryptedMessageRecipient
     ): string
     {
         if (!$public_key && $this->public_key) $public_key = $this->public_key;
-        if (!$public_key) throw new \Exception('Generating MAC key requires the recipient\'s public key');
+        if (!$public_key) throw new BadMethodCallException('Generating MAC key requires the recipient\'s public key');
 
         // 9. Concatenate the first 16 bytes of the header hash from step 7 above, with the recipient index from
         // step 4 above. This is the basis of each recipient's MAC nonce.

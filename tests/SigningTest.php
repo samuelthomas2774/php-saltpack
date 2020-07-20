@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Saltpack\Armor;
 use Saltpack\Signing;
 use Saltpack\SignedMessageHeader;
+use Saltpack\Exceptions;
 
 final class SigningTest extends TestCase
 {
@@ -91,7 +92,7 @@ final class SigningTest extends TestCase
 
     public function testVerifyWithWrongPublicKeyFails(): void
     {
-        $this->expectException(\Exception::class);
+        $this->expectException(Exceptions\VerifyError::class);
 
         $public_key = sodium_crypto_sign_publickey($this->keypair);
         $public_key[0] = '0';
@@ -126,7 +127,7 @@ final class SigningTest extends TestCase
 
     public function testVerifyDetachedWithWrongPublicKeyFails(): void
     {
-        $this->expectException(\Exception::class);
+        $this->expectException(Exceptions\VerifyError::class);
 
         $public_key = sodium_crypto_sign_publickey($this->keypair);
         $public_key[0] = '0';

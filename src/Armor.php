@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Saltpack;
 
+use InvalidArgumentException;
+
 class Armor
 {
     /** @var bool $debug */
@@ -41,7 +43,7 @@ class Armor
     {
         $rval = strpos($alphabet, $char);
         if ($rval === false) {
-            throw new \Exception('Could not find ' . $char . ' in alphabet ' . $alphabet);
+            throw new InvalidArgumentException('Could not find ' . $char . ' in alphabet ' . $alphabet);
         }
         return $rval;
     }
@@ -105,7 +107,7 @@ class Armor
 
         $stream_chunk_size = $options['stream_chunk_size'];
         if ($stream_chunk_size < 1) {
-            throw new \InvalidArgumentException('$stream_chunk_size must be at least 1');
+            throw new InvalidArgumentException('stream_chunk_size must be at least 1');
         }
 
         $buffer = '';
@@ -216,7 +218,7 @@ class Armor
             list($header, $input, $footer, $remaining) = explode('.', $input, 4);
 
             if (!preg_match(self::HEADER_REGEX, $header, $match)) {
-                throw new \Exception('Invalid header');
+                throw new Exceptions\InvalidArmorFraming('Invalid header');
             }
 
             $header_info = [
@@ -225,12 +227,12 @@ class Armor
             ];
 
             if (!preg_match(self::FOOTER_REGEX, $footer, $match)) {
-                throw new \Exception('Invalid footer');
+                throw new Exceptions\InvalidArmorFraming('Invalid footer');
             }
             if ($header_info['message_type'] !== $match[3] ||
                 $header_info['app_name'] !== $match[2]
             ) {
-                throw new \Exception('Footer doesn\'t match header');
+                throw new Exceptions\InvalidArmorFraming('Footer doesn\'t match header');
             }
         }
 
@@ -252,7 +254,7 @@ class Armor
 
         $stream_chunk_size = $options['stream_chunk_size'];
         if ($stream_chunk_size < 1) {
-            throw new \InvalidArgumentException('$stream_chunk_size must be at least 1');
+            throw new InvalidArgumentException('stream_chunk_size must be at least 1');
         }
 
         $output = '';
@@ -276,7 +278,7 @@ class Armor
                 $buffer = '';
 
                 if (!preg_match(self::HEADER_REGEX, $header, $header_match)) {
-                    throw new \Exception('Invalid header');
+                    throw new Exceptions\InvalidArmorFraming('Invalid header');
                 }
     
                 $header_info = [
@@ -344,17 +346,17 @@ class Armor
         }
 
         if (!$options['raw'] && $footer === null) {
-            throw new \Exception('Input stream doesn\'t contain a valid header and footer');
+            throw new Exceptions\InvalidArmorFraming('Input stream doesn\'t contain a valid header and footer');
         }
 
         if (!$options['raw']) {
             if (!preg_match(self::FOOTER_REGEX, $footer, $match)) {
-                throw new \Exception('Invalid footer');
+                throw new Exceptions\InvalidArmorFraming('Invalid footer');
             }
             if ($header_match[3] !== $match[3] ||
                 $header_match[2] !== $match[2]
             ) {
-                throw new \Exception('Footer doesn\'t match header');
+                throw new Exceptions\InvalidArmorFraming('Footer doesn\'t match header');
             }
 
             if (self::$debug) echo 'Read footer: ' . $footer . PHP_EOL;
@@ -408,7 +410,7 @@ class Armor
         $expected_block_size = self::characterBlockSize(strlen($alphabet), $bytes_size);
 
         if (strlen($chars_block) !== $expected_block_size) {
-            throw new \InvalidArgumentException('Illegal block size ' . strlen($chars_block) . ', expected ' .
+            throw new InvalidArgumentException('Illegal block size ' . strlen($chars_block) . ', expected ' .
                 $expected_block_size);
         }
 

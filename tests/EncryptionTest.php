@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Saltpack\Armor;
 use Saltpack\Encryption;
 use Saltpack\EncryptedMessageHeader;
+use Saltpack\Exceptions;
 
 final class EncryptionTest extends TestCase
 {
@@ -90,7 +91,7 @@ final class EncryptionTest extends TestCase
 
     public function testDecryptWithWrongKeypairFails(): void
     {
-        $this->expectException(\Exception::class);
+        $this->expectException(Exceptions\DecryptionError::class);
 
         $encrypted = hex2bin(self::ENCRYPTED_HEX);
         Encryption::decrypt($encrypted, $this->keypair_mallory);

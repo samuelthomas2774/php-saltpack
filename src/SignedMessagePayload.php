@@ -6,6 +6,8 @@ namespace Saltpack;
 
 use MessagePack\MessagePack;
 use MessagePack\PackOptions;
+use BadMethodCallException;
+use UnexpectedValueException;
 
 // [
 //     final flag,
@@ -48,7 +50,7 @@ class SignedMessagePayload
 
         if ($key === 'encoded') return $this->encoded_data;
 
-        throw new \Exception('Unknown property "' . $key . '"');
+        throw new BadMethodCallException('Unknown property "' . $key . '"');
     }
 
     public static function create(
@@ -100,7 +102,7 @@ class SignedMessagePayload
     {
         $data = $unpacked ? $encoded : MessagePack::unpack($encoded);
 
-        if (count($data) < 3) throw new \Exception('Invalid data');
+        if (count($data) < 3) throw new UnexpectedValueException('Invalid data');
 
         list($final, $signature, $payload_chunk) = $data;
 
@@ -112,7 +114,7 @@ class SignedMessagePayload
         $sign_data = self::generateSignData($header->hash, $index, $this->final, $this->data);
 
         if (!sodium_crypto_sign_verify_detached($this->signature, $sign_data, $public_key)) {
-            throw new \Exception('Invalid signature');
+            throw new Exceptions\VerifyError('Invalid signature');
         }
     }
 }

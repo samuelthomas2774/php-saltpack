@@ -81,7 +81,7 @@ class Encryption
         $sender_public_key = $header->decryptSender($payload_key);
 
         if (isset($sender) && $sender !== $sender_public_key) {
-            throw new \Exception('Sender public key doesn\'t match');
+            throw new Exception\VerifyError('Sender public key doesn\'t match');
         } else if ($header->public_key !== $sender_public_key) {
             $sender = $sender_public_key;
         }
@@ -97,10 +97,10 @@ class Encryption
 
             $final = count($messages) === ($i + 1);
             if ($payload->final && !$final) {
-                throw new \Exception('Found payload with invalid final flag, message extended?');
+                throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message extended?');
             }
             if (!$payload->final && $final) {
-                throw new \Exception('Found payload with invalid final flag, message truncated?');
+                throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message truncated?');
             }
 
             $output .= $payload->decrypt($header, $recipient, $payload_key, $i);
@@ -134,7 +134,7 @@ class Encryption
                 $sender_public_key = $header->decryptSender($payload_key);
 
                 if (isset($sender) && $sender !== $sender_public_key) {
-                    throw new \Exception('Sender public key doesn\'t match');
+                    throw new Exceptions\DecryptionError('Sender public key doesn\'t match');
                 } else if ($header->public_key !== $sender_public_key) {
                     $sender = $sender_public_key;
                 }
@@ -149,7 +149,7 @@ class Encryption
 
                 if ($last_payload) {
                     if ($last_payload->final) {
-                        throw new \Exception('Found payload with invalid final flag, message extended?');
+                        throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message extended?');
                     }
 
                     yield $payload->decrypt($header, $recipient, $payload_key, $index - 1);
@@ -162,7 +162,7 @@ class Encryption
 
         if ($last_payload) {
             if (!$last_payload->final) {
-                throw new \Exception('Found payload with invalid final flag, message truncated?');
+                throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message truncated?');
             }
 
             yield $payload->decrypt($header, $recipient, $payload_key, $index);

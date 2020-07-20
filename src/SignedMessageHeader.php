@@ -9,6 +9,8 @@ use MessagePack\Packer;
 use MessagePack\PackOptions;
 use MessagePack\Type\Bin;
 use MessagePack\TypeTransformer\BinTransformer;
+use BadMethodCallException;
+use UnexpectedValueException;
 
 // [
 //     format name,
@@ -55,7 +57,7 @@ class SignedMessageHeader extends Header
         if ($key === 'encoded') return $this->encoded_data[1];
         if ($key === 'hash') return $this->encoded_data[0];
 
-        throw new \Exception('Unknown property "' . $key . '"');
+        throw new BadMethodCallException('Unknown property "' . $key . '"');
     }
 
     public static function create(string $public_key, bool $attached = true): SignedMessageHeader
@@ -99,9 +101,9 @@ class SignedMessageHeader extends Header
         list($header_hash, $data) = parent::decode($encoded, $unwrapped);
 
         if ($data[2] !== self::MODE_ATTACHED_SIGNING &&
-            $data[2] !== self::MODE_DETACHED_SIGNING) throw new \Exception('Invalid data');
+            $data[2] !== self::MODE_DETACHED_SIGNING) throw new UnexpectedValueException('Invalid data');
 
-        if (count($data) < 5) throw new \Exception('Invalid data');
+        if (count($data) < 5) throw new UnexpectedValueException('Invalid data');
 
         list(,,, $public_key, $nonce) = $data;
 
@@ -111,7 +113,7 @@ class SignedMessageHeader extends Header
     public function signDetached(string $data, string $private_key): string
     {
         if ($this->attached) {
-            throw new \Exception('Header $attached is true');
+            throw new BadMethodCallException('Header $attached is true');
         }
 
         $hash = hash('sha512', $this->hash . $data, true);
@@ -123,14 +125,14 @@ class SignedMessageHeader extends Header
     public function verifyDetached(string $signature, string $data, string $public_key)
     {
         if ($this->attached) {
-            throw new \Exception('Header $attached is true');
+            throw new BadMethodCallException('Header $attached is true');
         }
 
         $hash = hash('sha512', $this->hash . $data, true);
         $sign_data = "saltpack detached signature\0" . $hash;
 
         if (!sodium_crypto_sign_verify_detached($signature, $sign_data, $public_key)) {
-            throw new \Exception('Invalid signature');
+            throw new Exceptions\VerifyError('Invalid signature');
         }
     }
 }

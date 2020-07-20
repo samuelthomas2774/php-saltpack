@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Saltpack;
 
 use MessagePack\MessagePack;
+use UnexpectedValueException;
 
 class Header
 {
@@ -21,15 +22,15 @@ class Header
         $data = MessagePack::unpack($data);
 
         // 4
-        if (count($data) < 2) throw new \Exception('Invalid data');
+        if (count($data) < 2) throw new UnexpectedValueException('Invalid data');
 
         list($format_name, $version, $mode) = $data;
 
-        if ($format_name !== 'saltpack') throw new \Exception('Invalid data');
-        if (count($version) !== 2) throw new \Exception('Invalid data');
+        if ($format_name !== 'saltpack') throw new UnexpectedValueException('Invalid data');
+        if (count($version) !== 2) throw new UnexpectedValueException('Invalid data');
 
-        if ($version[0] !== 2) throw new \Exception('Unsupported version');
-        if ($version[1] !== 0) throw new \Exception('Unsupported version');
+        if ($version[0] !== 2) throw new UnexpectedValueException('Unsupported version');
+        if ($version[1] !== 0) throw new UnexpectedValueException('Unsupported version');
 
         return [$header_hash, $data];
     }

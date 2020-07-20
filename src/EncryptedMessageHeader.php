@@ -9,6 +9,8 @@ use MessagePack\Packer;
 use MessagePack\PackOptions;
 use MessagePack\Type\Bin;
 use MessagePack\TypeTransformer\BinTransformer;
+use BadMethodCallException;
+use UnexpectedValueException;
 
 // [
 //     format name,
@@ -55,7 +57,16 @@ class EncryptedMessageHeader extends Header
         if ($key === 'encoded') return $this->encoded_data[1];
         if ($key === 'hash') return $this->encoded_data[0];
 
-        throw new \Exception('Unknown property "' . $key . '"');
+        throw new BadMethodCallException('Unknown property "' . $key . '"');
+    }
+
+    public function __debugInfo()
+    {
+        return [
+            'public_key' => $this->public_key,
+            'sender_secretbox' => $this->sender_secretbox,
+            'recipients' => $this->recipients,
+        ];
     }
 
     public static function create(string $public_key, string $payload_key, string $sender_public_key, array $recipients)
@@ -111,9 +122,9 @@ class EncryptedMessageHeader extends Header
     {
         list($header_hash, $data) = parent::decode($encoded, $unwrapped);
 
-        if ($data[2] !== self::MODE_ENCRYPTION) throw new \Exception('Invalid data');
+        if ($data[2] !== self::MODE_ENCRYPTION) throw new UnexpectedValueException('Invalid data');
 
-        if (count($data) < 6) throw new \Exception('Invalid data');
+        if (count($data) < 6) throw new UnexpectedValueException('Invalid data');
 
         list(,,, $public_key, $sender, $recipients) = $data;
 
@@ -150,7 +161,7 @@ class EncryptedMessageHeader extends Header
             return [$payload_key, $recipient];
         }
 
-        throw new \Exception('$keypair is not an intended recipient');
+        throw new Exceptions\DecryptionError('$keypair is not an intended recipient');
     }
 
     public function decryptSender(string $payload_key): string

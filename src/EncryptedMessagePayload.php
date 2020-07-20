@@ -6,6 +6,9 @@ namespace Saltpack;
 
 use MessagePack\MessagePack;
 use MessagePack\PackOptions;
+use BadMethodCallException;
+use InvalidArgumentException;
+use UnexpectedValueException;
 
 // [
 //     final flag,
@@ -48,7 +51,16 @@ class EncryptedMessagePayload
 
         if ($key === 'encoded') return $this->encoded_data;
 
-        throw new \Exception('Unknown property "' . $key . '"');
+        throw new BadMethodCallException('Unknown property "' . $key . '"');
+    }
+
+    public function __debugInfo()
+    {
+        return [
+            'final' => $this->final,
+            'authenticators' => $this->authenticators,
+            'payload_secretbox' => $this->payload_secretbox,
+        ];
     }
 
     public static function create(
@@ -65,7 +77,7 @@ class EncryptedMessagePayload
             EncryptedMessageRecipient $recipient
         ) use ($authenticator_hash) {
             if ($recipient->mac_key === null) {
-                throw new \InvalidArgumentException('Recipient #' . $index . ' doesn\'t have a MAC key set');
+                throw new InvalidArgumentException('Recipient #' . $index . ' doesn\'t have a MAC key set');
             }
 
             // 3. For each recipient, compute the crypto_auth (HMAC-SHA512, truncated to 32 bytes) of the hash
@@ -116,7 +128,7 @@ class EncryptedMessagePayload
     {
         $data = $unpacked ? $encoded : MessagePack::unpack($encoded);
 
-        if (count($data) < 3) throw new \Exception('Invalid data');
+        if (count($data) < 3) throw new UnexpectedValueException('Invalid data');
 
         list($final, $authenticators, $payload_secretbox) = $data;
 
@@ -128,7 +140,7 @@ class EncryptedMessagePayload
     )
     {
         if ($recipient->mac_key === null) {
-            throw new \InvalidArgumentException('Recipient doesn\'t have a MAC key set');
+            throw new InvalidArgumentException('Recipient doesn\'t have a MAC key set');
         }
 
         $authenticator = $this->authenticators[$recipient->index];
@@ -143,13 +155,13 @@ class EncryptedMessagePayload
         $our_authenticator = substr(sodium_crypto_auth($authenticator_hash, $recipient->mac_key), 0, 32);
 
         if ($authenticator !== $our_authenticator) {
-            throw new \Exception('Invalid authenticator');
+            throw new Exceptions\DecryptionError('Invalid authenticator');
         }
 
         $decrypted = sodium_crypto_secretbox_open($this->payload_secretbox, $nonce, $payload_key);
 
         if ($decrypted === false) {
-            throw new Exception('Failed to decrypt data');
+            throw new Exceptions\DecryptionError('Failed to decrypt data');
         }
 
         return $decrypted;
