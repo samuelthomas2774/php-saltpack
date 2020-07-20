@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Saltpack;
 
 use MessagePack\MessagePack;
+use MessagePack\Packer;
 use MessagePack\PackOptions;
+use MessagePack\Type\Bin;
+use MessagePack\TypeTransformer\BinTransformer;
 
 // [
 //     format name,
@@ -59,7 +62,7 @@ class SignedMessageHeader extends Header
     {
         $nonce = self::$debug_fix_nonce ?? random_bytes(32);
 
-        return new SignedMessageHeader($public_key, $nonce, $attached);
+        return new self($public_key, $nonce, $attached);
     }
 
     public function encode()
@@ -79,11 +82,12 @@ class SignedMessageHeader extends Header
             'saltpack',
             [2, 0],
             $attached ? self::MODE_ATTACHED_SIGNING : self::MODE_DETACHED_SIGNING,
-            $public_key,
-            $nonce,
+            new Bin($public_key),
+            new Bin($nonce),
         ];
 
-        $encoded = MessagePack::pack($data);
+        $packer = new Packer(PackOptions::FORCE_STR, [new BinTransformer()]);
+        $encoded = $packer->pack($data);
 
         $header_hash = hash('sha512', $encoded, true);
 

@@ -16,17 +16,14 @@ final class SigningTest extends TestCase
         'could, to where it bent in the undergrowth.';
 
     // Signed with a hardcoded keypair
-    const SIGNED_ARMORED = 'BEGIN SALTPACK SIGNED MESSAGE. kYM5h1pg6qz9UMn j6G9T0lmMjkYOsZ Kn4Acw58u39dn3B ' .
-        'kmdpuvqpO3t2QdM CnBX5wO3tOv7bWQ C0ZjZmZwkVc0000 000000000000000 00000000xTSC6Wm fygB9EKusQb8Znq ' .
-        'EWXDdTd0JL4mTLM 4WpyJxXYaA6vhBp CYfzQJ5B3Ob9zmK w7S214B22XdNv0R uq1AeFybkIHsvtv rVrLDN5s9bkJE42 ' .
-        'hEUFOKNdklXPbnW N7ftTO2L4pqwnl4 5s9QAyu8GLIeOCh nGSD3XNOUPToxH3 Pelc42Xz5oOVMI3 c2ScE8gRgTQ9UAM ' .
-        'VXnut3siWpTSEqQ VHhLbdfUDCmKdIQ QKXoeeJBRilOtbN gckxla11c4v6Qzw tlPxv7p6y2e8N6i Paehy2YQ8IFggor ' .
-        '7CMMLWrnzrU40vL vCFTlwsK8G3Xeok f8UrxgICsgJapXL xe. END SALTPACK SIGNED MESSAGE.';
+    const SIGNATURE_HEADER_HEX = 'c45295a873616c747061636b92020001c4203b6a27bcceb6a42d62a3a8d02a6f' .
+        '0d73653215771de243a63ac048a18b59da29c420000000000000000000000000' .
+        '0000000000000000000000000000000000000000';
     const SIGNED_HEX = 'c45295a873616c747061636b92020001c4203b6a27bcceb6a42d62a3a8d02a6f' .
-        '0d73653215771de243a63ac048a18b59da29d920000000000000000000000000' .
-        '000000000000000000000000000000000000000093c3c440e6d7eac8b8279c56' .
-        '702b91396777698a1adf14d0f2c63d4fccb735885255938369dd62b65d4a80ef' .
-        '2e9e72da00c223d3bd1a6499de6703f040f1a483e65b4105d9b654776f20726f' .
+        '0d73653215771de243a63ac048a18b59da29c420000000000000000000000000' .
+        '000000000000000000000000000000000000000093c3c4404a77380837fb4ec6' .
+        '2480e76c59b735a6287e85b54afe7793531ff70076c51fc23b1f078e6700b85b' .
+        'eb9fc091d69c8826b5268765b7eded317d943fed99bb560fc4b654776f20726f' .
         '61647320646976657267656420696e20612079656c6c6f7720776f6f642c2061' .
         '6e6420736f727279204920636f756c64206e6f742074726176656c20626f7468' .
         '0a616e64206265206f6e652074726176656c6c65722c206c6f6e672049207374' .
@@ -34,15 +31,14 @@ final class SigningTest extends TestCase
         '617320490a636f756c642c20746f2077686572652069742062656e7420696e20' .
         '74686520756e64657267726f7774682e';
 
-    const DETACHED_SIGNATURE_ARMORED = 'BEGIN SALTPACK DETACHED SIGNATURE. kYM5h1pg6qz9UMn j6G9T0tZQlxoky3 ' .
-        '0YoKQ4s21IrFv3B kmdpuvqpO3t2QdM CnBX5wO3tOv7bWQ C0ZjZmZwkVc0000 000000000000000 00000001GzUJvbQ ' .
-        'ok7ysE5tdLoOMQo rzUxGAGrCmBjvpK AUk6aScpEO4JJHm OT2neYw5p4sOxzi HoqGTDUfkXUtVDf hL0O6CZ. ' .
-        'END SALTPACK DETACHED SIGNATURE.';
+    const DETACHED_SIGNATURE_HEADER_HEX = 'c45295a873616c747061636b92020002c4203b6a27bcceb6a42d62a3a8d02a6f' .
+        '0d73653215771de243a63ac048a18b59da29c420000000000000000000000000' .
+        '0000000000000000000000000000000000000000';
     const DETACHED_SIGNATURE_HEX = 'c45295a873616c747061636b92020002c4203b6a27bcceb6a42d62a3a8d02a6f' .
-        '0d73653215771de243a63ac048a18b59da29d920000000000000000000000000' .
-        '0000000000000000000000000000000000000000c440e846e567f7e1e5c1f2bd' .
-        '5bfc7f5ccc7efa606dec633de96e4530017a8da06ce0d0c409da5e3d1f05880e' .
-        '946ecbb0e643ea6490a6c4ac8160927689354bef2703';
+        '0d73653215771de243a63ac048a18b59da29c420000000000000000000000000' .
+        '0000000000000000000000000000000000000000c4403d452b27bfc69543e20c' .
+        'bf3a139fd689450f26e4084660f66090de422f2e438931efd159c9101c99e070' .
+        'f3de277330b51940a7583f8c925085b1f86f38693f06';
 
     /** @var string $keypair */
     private $keypair;
@@ -58,10 +54,10 @@ final class SigningTest extends TestCase
     public function testSign(): void
     {
         $signed = Signing::sign(self::INPUT_STRING, $this->keypair);
-        $armored = Armor::armor($signed, ['message_type' => 'SIGNED MESSAGE']);
 
-        $this->assertEquals(self::SIGNED_ARMORED, $armored);
         $this->assertEquals(self::SIGNED_HEX, bin2hex($signed));
+        $this->assertEquals(self::SIGNATURE_HEADER_HEX,
+            substr(bin2hex($signed), 0, strlen(self::SIGNATURE_HEADER_HEX)));
     }
 
     public function testSignStream(): void
@@ -104,12 +100,17 @@ final class SigningTest extends TestCase
         Signing::verify($signed, $public_key);
     }
 
+    public function testSignDetachedHeader(): void
+    {
+        $signed = Signing::signDetached(self::INPUT_STRING, $this->keypair, $debug);
+
+        $this->assertEquals(self::DETACHED_SIGNATURE_HEADER_HEX, bin2hex($debug[0]->encoded));
+    }
+
     public function testSignDetached(): void
     {
         $signed = Signing::signDetached(self::INPUT_STRING, $this->keypair);
-        $armored = Armor::armor($signed, ['message_type' => 'DETACHED SIGNATURE']);
 
-        $this->assertEquals(self::DETACHED_SIGNATURE_ARMORED, $armored);
         $this->assertEquals(self::DETACHED_SIGNATURE_HEX, bin2hex($signed));
     }
 

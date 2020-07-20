@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Saltpack;
 
 use MessagePack\MessagePack;
+use MessagePack\PackOptions;
 
 // [
 //     final flag,
@@ -108,7 +109,7 @@ class EncryptedMessagePayload
             $payload_secretbox,
         ];
 
-        return MessagePack::pack($data);
+        return MessagePack::pack($data, PackOptions::FORCE_BIN);
     }
 
     public static function decode($encoded, $unpacked = false): EncryptedMessagePayload

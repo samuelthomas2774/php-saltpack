@@ -12,7 +12,7 @@ class Signing
 {
     const CHUNK_LENGTH = 1024 * 1024;
 
-    public static function sign(string $data, string $keypair): string
+    public static function sign(string $data, string $keypair, &$debug = null): string
     {
         $chunks = str_split($data, self::CHUNK_LENGTH);
 
@@ -28,6 +28,8 @@ class Signing
 
             $payloads[] = $payload;
         }
+
+        if (func_num_args() >= 3) $debug = [$header, $payloads];
 
         return $header->encoded . implode('', array_map(function (SignedMessagePayload $payload) {
             return $payload->encoded;
@@ -113,14 +115,17 @@ class Signing
         }
     }
 
-    public static function signDetached(string $data, string $keypair): string
+    public static function signDetached(string $data, string $keypair, &$debug = null): string
     {
         $public_key = sodium_crypto_sign_publickey($keypair);
         $private_key = sodium_crypto_sign_secretkey($keypair);
 
         $header = SignedMessageHeader::create($public_key, false);
+        $signature = MessagePack::pack($header->signDetached($data, $private_key), PackOptions::FORCE_BIN);
 
-        return $header->encoded . MessagePack::pack($header->signDetached($data, $private_key), PackOptions::FORCE_BIN);
+        if (func_num_args() >= 3) $debug = [$header, $signature];
+
+        return $header->encoded . $signature;
     }
 
     public static function verifyDetached(string $signature, string $data, string $public_key): void

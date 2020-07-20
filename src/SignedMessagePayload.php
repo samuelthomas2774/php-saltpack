@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Saltpack;
 
 use MessagePack\MessagePack;
+use MessagePack\PackOptions;
 
 // [
 //     final flag,
@@ -57,7 +58,7 @@ class SignedMessagePayload
         $sign_data = self::generateSignData($header->hash, $index, $final, $data);
         $signature = sodium_crypto_sign_detached($sign_data, $private_key);
 
-        return new SignedMessagePayload($final, $signature, $data);
+        return new self($final, $signature, $data);
     }
 
     public static function generateSignData(
@@ -92,7 +93,7 @@ class SignedMessagePayload
             $final,
             $signature,
             $payload_chunk,
-        ]);
+        ], PackOptions::FORCE_BIN);
     }
 
     public static function decode($encoded, $unpacked = false): SignedMessagePayload

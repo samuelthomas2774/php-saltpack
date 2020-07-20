@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Saltpack;
 
 use MessagePack\MessagePack;
+use MessagePack\Packer;
 use MessagePack\PackOptions;
+use MessagePack\Type\Bin;
+use MessagePack\TypeTransformer\BinTransformer;
 
 // [
 //     format name,
@@ -81,8 +84,8 @@ class EncryptedMessageHeader extends Header
             'saltpack',
             [2, 0],
             self::MODE_ENCRYPTION,
-            $public_key,
-            $sender,
+            new Bin($public_key),
+            new Bin($sender),
             array_map(function (EncryptedMessageRecipient $recipient) {
                 // [
                 //     recipient public key,
@@ -90,13 +93,14 @@ class EncryptedMessageHeader extends Header
                 // ]
 
                 return [
-                    $recipient->anonymous ? null : $recipient->public_key,
-                    $recipient->encrypted_payload_key,
+                    $recipient->anonymous ? null : new Bin($recipient->public_key),
+                    new Bin($recipient->encrypted_payload_key),
                 ];
             }, $recipients),
         ];
 
-        $encoded = MessagePack::pack($data);
+        $packer = new Packer(PackOptions::FORCE_STR, [new BinTransformer()]);
+        $encoded = $packer->pack($data);
 
         $header_hash = hash('sha512', $encoded, true);
 
