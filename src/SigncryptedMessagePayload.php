@@ -153,7 +153,7 @@ class SigncryptedMessagePayload
 
         // 3. Take the first 64 bytes of the plaintext as the detached signature, and the rest as the payload chunk.
         $data = substr($signature_data, 64);
-        
+
         if ($public_key !== null) {
             $signature = substr($signature_data, 0, 64);
 
