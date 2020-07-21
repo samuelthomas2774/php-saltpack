@@ -61,11 +61,6 @@ class Encryption
         }, $payloads));
     }
 
-    public static function encryptStream(iterable $data, ?string $keypair, array $recipients_keys): iterable
-    {
-        //
-    }
-
     public static function decrypt(string $encrypted, string $keypair, string &$sender = null): string
     {
         $unpacker = new BufferUnpacker();
@@ -107,65 +102,5 @@ class Encryption
         }
 
         return $output;
-    }
-
-    public static function decryptStream(
-        iterable $encrypted, string $keypair, string &$sender = null
-    ): iterable
-    {
-        $unpacker = new BufferUnpacker();
-
-        $header = null;
-        $last_payload = null;
-        $index = -1;
-
-        foreach ($encrypted as $chunk) {
-            $unpacker->append($chunk);
-
-            $messages = $unpacker->tryUnpack();
-
-            if ($header === null && count($messages) > 0) {
-                $header_data = array_shift($messages);
-                $header = EncryptedMessageHeader::decode($header_data, true);
-        
-                $private_key = sodium_crypto_box_secretkey($keypair);
-        
-                list($payload_key, $recipient) = $header->decryptPayloadKey($keypair);
-                $sender_public_key = $header->decryptSender($payload_key);
-
-                if (isset($sender) && $sender !== $sender_public_key) {
-                    throw new Exceptions\DecryptionError('Sender public key doesn\'t match');
-                } else if ($header->public_key !== $sender_public_key) {
-                    $sender = $sender_public_key;
-                }
-
-                $recipient->generateMacKeyForRecipient(
-                    $header->hash, $header->public_key, $sender_public_key, $private_key
-                );
-            }
-
-            foreach ($messages as $message) {
-                $index++;
-
-                if ($last_payload) {
-                    if ($last_payload->final) {
-                        throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message extended?');
-                    }
-
-                    yield $payload->decrypt($header, $recipient, $payload_key, $index - 1);
-                }
-
-                $payload = EncryptedMessagePayload::decode($message, true);
-                $last_payload = $payload;
-            }
-        }
-
-        if ($last_payload) {
-            if (!$last_payload->final) {
-                throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message truncated?');
-            }
-
-            yield $payload->decrypt($header, $recipient, $payload_key, $index);
-        }
     }
 }

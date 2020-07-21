@@ -6,6 +6,8 @@ namespace SaltpackTests;
 
 use PHPUnit\Framework\TestCase;
 use Saltpack\Armor;
+use Saltpack\ArmorStream;
+use Saltpack\DearmorStream;
 
 final class ArmorTest extends TestCase
 {
@@ -149,33 +151,43 @@ final class ArmorTest extends TestCase
 
     public function testStreamingArmoring(): void
     {
-        $options = [
-            'stream_chunk_size' => $chunk_length = 3,
-        ];
+        $options = [];
+        $expected = Armor::armor(self::INPUT_STRING, $options);
+        $result = '';
 
-        $expected = str_split(Armor::armor(self::INPUT_STRING, $options), $chunk_length);
-        $result = [];
+        $stream = new ArmorStream($options);
 
-        foreach (Armor::armorStream([self::INPUT_STRING], $options) as $i => $encoded_chunk) {
-            $result[] = $encoded_chunk;
+        $stream->on('data', function (string $data) use (&$result) {
+            $result .= $data;
+        });
+
+        foreach (str_split(self::INPUT_STRING, 3) as $in) {
+            $stream->write($in);
         }
+
+        $stream->end();
 
         $this->assertEquals($expected, $result);
     }
 
     public function testStreamingDearmoring(): void
     {
-        $options = [
-            'stream_chunk_size' => $chunk_length = 3,
-        ];
+        $options = [];
         $armored = Armor::armor(self::INPUT_STRING, $options);
+        $expected = Armor::dearmor($armored, $options);
+        $result = '';
 
-        $expected = str_split(Armor::dearmor($armored, $options), $chunk_length);
-        $result = [];
+        $stream = new DearmorStream($options);
 
-        foreach (Armor::dearmorStream([$armored], $options) as $i => $decoded_chunk) {
-            $result[] = $decoded_chunk;
+        $stream->on('data', function (string $data) use (&$result) {
+            $result .= $data;
+        });
+
+        foreach (str_split($armored, 3) as $in) {
+            $stream->write($in);
         }
+
+        $stream->end();
 
         $this->assertEquals($expected, $result);
     }

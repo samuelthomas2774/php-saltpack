@@ -35,7 +35,6 @@ class Armor
         'shift' => false,
         'message_type' => 'MESSAGE',
         'app_name' => null, // Application name (e.g. "KEYBASE")
-        'stream_chunk_size' => 256,
     ];
 
     /** Return the index of the specified +char+ in +alphabet+, raising an appropriate error if it is not found. */
@@ -59,7 +58,7 @@ class Armor
     {
 	    return (int) floor(log($alphabet_size, 2) / 8 * $chars_size);
     }
-    
+
     /**
      * Return the number of bits left over after using an alphabet of the specified +alphabet_size+ to encode a
      * payload of +bytes_size+ with +chars_size+ characters.
@@ -98,113 +97,6 @@ class Armor
         $footer = '. END' . $app . ' SALTPACK ' . $options['message_type'] . '.';
 
         return $header . $joined . $footer;
-    }
-
-    /** Return the +input_bytes+ ascii-armored using the specified +options+ */
-    public static function armorStream(iterable $input, array $options = []): iterable
-    {
-        $options = array_merge(self::DEFAULT_OPTIONS, $options);
-
-        $stream_chunk_size = $options['stream_chunk_size'];
-        if ($stream_chunk_size < 1) {
-            throw new InvalidArgumentException('stream_chunk_size must be at least 1');
-        }
-
-        $buffer = '';
-
-        $app = $options['app_name'] ? ' ' . $options['app_name'] : '';
-        $header = 'BEGIN' . $app . ' SALTPACK ' . $options['message_type'] . '. ';
-        $footer = '. END' . $app . ' SALTPACK ' . $options['message_type'] . '.';
-
-        if (!$options['raw']) {
-            $buffer .= $header;
-            while (strlen($buffer) >= $stream_chunk_size) {
-                yield substr($buffer, 0, $stream_chunk_size);
-                $buffer = substr($buffer, $stream_chunk_size);
-            }
-        }
-
-        $in_buffer = '';
-        $output = '';
-        $words = 0;
-
-        foreach ($input as $i => $chunk) {
-            if (self::$debug) echo 'Processing chunk #' . $i . ': ' . $chunk . PHP_EOL;
-
-            $in_buffer .= $chunk;
-
-            while (strlen($in_buffer) > $options['block_size']) {
-                $block = substr($in_buffer, 0, $options['block_size']);
-                $in_buffer = substr($in_buffer, $options['block_size']);
-
-                $output .= self::encodeBlock($block, $options['alphabet'], $options['shift']);
-            }
-
-            if ($options['raw']) {
-                while (strlen($output) > 43) {
-                    $buffer .= substr($output, 0, 43) . ' ';
-                    $output = substr($output, 43);
-                }
-            } else {
-                while (strlen($output) > 15) {
-                    $buffer .= $word = substr($output, 0, 15);
-                    $output = substr($output, 15);
-                    $words++;
-
-                    if ($words >= 200) {
-                        $buffer .= "\n";
-                        $words = 0;
-                    } else {
-                        $buffer .= ' ';
-                    }
-                }
-            }
-
-            while (strlen($buffer) >= $stream_chunk_size) {
-                yield substr($buffer, 0, $stream_chunk_size);
-                $buffer = substr($buffer, $stream_chunk_size);
-            }
-        }
-
-        if (strlen($in_buffer) > 0) {
-            $output .= self::encodeBlock($in_buffer, $options['alphabet'], $options['shift']);
-            $in_buffer = '';
-        }
-
-        if ($options['raw']) {
-            while (strlen($output) > 43) {
-                $buffer .= substr($output, 0, 43) . ' ';
-                $output = substr($output, 43);
-            }
-        } else {
-            while (strlen($output) > 15) {
-                $buffer .= $word = substr($output, 0, 15);
-                $output = substr($output, 15);
-                $words++;
-
-                if ($words >= 200) {
-                    $buffer .= "\n";
-                    $words = 0;
-                } else {
-                    $buffer .= ' ';
-                }
-            }
-        }
-
-        $buffer .= $output;
-
-        if (!$options['raw']) {
-            $buffer .= $footer;
-        }
-
-        while (strlen($buffer) >= $stream_chunk_size) {
-            yield substr($buffer, 0, $stream_chunk_size);
-            $buffer = substr($buffer, $stream_chunk_size);
-        }
-
-        if (strlen($buffer) > 0) {
-            yield $buffer;
-        }
     }
 
     /** Decode the ascii-armored data from the specified +input_chars+ using the given +options+. */
@@ -247,131 +139,6 @@ class Armor
         return $output;
     }
 
-    /** Decode the ascii-armored data from the specified +input_chars+ using the given +options+. */
-    public static function dearmorStream(iterable $input, array $options = [], ?array $header_info = null): iterable
-    {
-        $options = array_merge(self::DEFAULT_OPTIONS, $options);
-
-        $stream_chunk_size = $options['stream_chunk_size'];
-        if ($stream_chunk_size < 1) {
-            throw new InvalidArgumentException('stream_chunk_size must be at least 1');
-        }
-
-        $output = '';
-
-        $buffer = '';
-        $header = null;
-        $header_match = null;
-        $footer = null;
-
-        foreach ($input as $i => $chunk) {
-            if (self::$debug) echo 'Processing chunk #' . $i . ': ' . $chunk . PHP_EOL;
-
-            if (!$options['raw'] && $header === null) {
-                $buffer .= $chunk;
-
-                $index = strpos($buffer, '.');
-                if ($index === false) continue;
-
-                $header = substr($buffer, 0, $index);
-                $chunk = substr($buffer, $index + 1);
-                $buffer = '';
-
-                if (!preg_match(self::HEADER_REGEX, $header, $header_match)) {
-                    throw new Exceptions\InvalidArmorFraming('Invalid header');
-                }
-    
-                $header_info = [
-                    'message_type' => $header_match[3],
-                    'app_name' => $header_match[2],
-                ];
-
-                if (self::$debug) echo 'Read header: ' . $header . PHP_EOL;
-            }
-
-            if (!$options['raw'] && $footer !== null) {
-                $footer .= $chunk;
-
-                $remaining_index = strpos($footer, '.');
-                if ($remaining_index !== false) {
-                    $footer = substr($footer, 0, $remaining_index);
-                    break;
-                }
-            }
-
-            if (!$options['raw'] && $footer === null) {
-                $index = strpos($chunk, '.');
-                if ($index !== false) {
-                    $footer = substr($chunk, $index + 1);
-                    $chunk = substr($chunk, 0, $index);
-                    $buffer .= str_replace(['>', "\n", "\r", "\t", ' '], '', $chunk);
-
-                    $remaining_index = strpos($footer, '.');
-                    if ($remaining_index !== false) {
-                        $footer = substr($footer, 0, $remaining_index);
-                        break;
-                    }
-
-                    continue;
-                }
-            }
-
-            if ($options['raw'] || $footer === null) {
-                $buffer .= str_replace(['>', "\n", "\r", "\t", ' '], '', $chunk);
-
-                while (strlen($buffer) > $options['char_block_size']) {
-                    $block = substr($buffer, 0, $options['char_block_size']);
-                    $buffer = substr($buffer, $options['char_block_size']);
-
-                    $output .= self::decodeBlock($block, $options['alphabet'], $options['shift']);
-                }
-            }
-
-            while (strlen($output) >= $stream_chunk_size) {
-                yield substr($output, 0, $stream_chunk_size);
-                $output = substr($output, $stream_chunk_size);
-            }
-        }
-
-        while (strlen($buffer) > $options['char_block_size']) {
-            $block = substr($buffer, 0, $options['char_block_size']);
-            $buffer = substr($buffer, $options['char_block_size']);
-
-            $output .= self::decodeBlock($block, $options['alphabet'], $options['shift']);
-        }
-
-        if (strlen($buffer) > 0) {
-            $output .= self::decodeBlock($buffer, $options['alphabet'], $options['shift']);
-            $buffer = '';
-        }
-
-        if (!$options['raw'] && $footer === null) {
-            throw new Exceptions\InvalidArmorFraming('Input stream doesn\'t contain a valid header and footer');
-        }
-
-        if (!$options['raw']) {
-            if (!preg_match(self::FOOTER_REGEX, $footer, $match)) {
-                throw new Exceptions\InvalidArmorFraming('Invalid footer');
-            }
-            if ($header_match[3] !== $match[3] ||
-                $header_match[2] !== $match[2]
-            ) {
-                throw new Exceptions\InvalidArmorFraming('Footer doesn\'t match header');
-            }
-
-            if (self::$debug) echo 'Read footer: ' . $footer . PHP_EOL;
-        }
-
-        while (strlen($output) >= $stream_chunk_size) {
-            yield substr($output, 0, $stream_chunk_size);
-            $output = substr($output, $stream_chunk_size);
-        }
-
-        if (strlen($output) > 0) {
-            yield $output;
-        }
-    }
-    
     /** Encode a single block of ascii-armored output from +bytes_block+ using the specified +alphabet+ and +shift+. */
     public static function encodeBlock(
         string $bytes_block, string $alphabet = self::BASE62_ALPHABET, bool $shift = false
@@ -400,7 +167,7 @@ class Armor
             return $alphabet[$i];
         }, $places));
     }
-    
+
     /** Decode the specified ascii-armored +chars_block+ using the specified +alphabet+ and +shift+. */
     public static function decodeBlock(
         string $chars_block, string $alphabet = self::BASE62_ALPHABET, bool $shift = false
@@ -427,7 +194,7 @@ class Armor
             for ($i = 0; $i > $extra; $i++) $n = $n * 2;
             $bytes_int = gmp_div_q($bytes_int, (string) $n);
         }
-        
+
         return gmp_export($bytes_int, 1, GMP_BIG_ENDIAN);
     }
 

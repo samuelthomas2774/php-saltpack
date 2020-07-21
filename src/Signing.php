@@ -36,11 +36,6 @@ class Signing
         }, $payloads));
     }
 
-    public static function signStream(iterable $data, string $keypair): iterable
-    {
-        //
-    }
-
     public static function verify(string $signed, string $public_key): string
     {
         $unpacker = new BufferUnpacker();
@@ -68,51 +63,6 @@ class Signing
         }
 
         return $output;
-    }
-
-    public static function verifyStream(iterable $signed, string $public_key): iterable
-    {
-        $unpacker = new BufferUnpacker();
-
-        $header = null;
-        $last_payload = null;
-        $index = -1;
-
-        foreach ($signed as $chunk) {
-            $unpacker->append($chunk);
-
-            $messages = $unpacker->tryUnpack();
-
-            if ($header === null && count($messages) > 0) {
-                $header_data = array_shift($messages);
-                $header = SignedMessageHeader::decode($header_data, true);
-            }
-
-            foreach ($messages as $message) {
-                $index++;
-
-                if ($last_payload) {
-                    if ($last_payload->final) {
-                        throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message extended?');
-                    }
-
-                    yield $last_payload->data;
-                }
-
-                $payload = SignedMessagePayload::decode($message, true);
-                $payload->verify($header, $public_key, $index);
-
-                $last_payload = $payload;
-            }
-        }
-
-        if ($last_payload) {
-            if (!$last_payload->final) {
-                throw new Exceptions\InvalidFinalFlag('Found payload with invalid final flag, message truncated?');
-            }
-
-            yield $last_payload->data;
-        }
     }
 
     public static function signDetached(string $data, string $keypair, &$debug = null): string

@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Saltpack\Armor;
 use Saltpack\Encryption;
 use Saltpack\EncryptedMessageHeader;
+use Saltpack\EncryptStream;
+use Saltpack\DecryptStream;
 use Saltpack\Exceptions;
 
 final class EncryptionTest extends TestCase
@@ -62,7 +64,24 @@ final class EncryptionTest extends TestCase
 
     public function testEncryptStream(): void
     {
-        // TODO
+        $options = [];
+        $result = '';
+
+        $stream = new EncryptStream($this->keypair_alice, [
+            sodium_crypto_box_publickey($this->keypair_bob),
+        ]);
+
+        $stream->on('data', function (string $data) use (&$result) {
+            $result .= $data;
+        });
+
+        foreach (str_split(self::INPUT_STRING, 3) as $in) {
+            $stream->write($in);
+        }
+
+        $stream->end();
+
+        $this->assertEquals(self::ENCRYPTED_HEX, bin2hex($result));
     }
 
     public function testDecrypt(): void
@@ -79,13 +98,19 @@ final class EncryptionTest extends TestCase
         $encrypted = hex2bin(self::ENCRYPTED_HEX);
         $result = '';
 
-        foreach (Encryption::decryptStream(
-            [$encrypted], $this->keypair_bob, $sender_public_key
-        ) as $i => $decoded_chunk) {
-            $result .= $decoded_chunk;
+        $stream = new DecryptStream($this->keypair_bob);
+
+        $stream->on('data', function (string $data) use (&$result) {
+            $result .= $data;
+        });
+
+        foreach (str_split($encrypted, 3) as $in) {
+            $stream->write($in);
         }
 
-        $this->assertEquals(sodium_crypto_box_publickey($this->keypair_alice), $sender_public_key);
+        $stream->end();
+
+        $this->assertEquals(sodium_crypto_box_publickey($this->keypair_alice), $stream->sender_public_key);
         $this->assertEquals(self::INPUT_STRING, $result);
     }
 

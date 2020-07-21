@@ -12,9 +12,16 @@
         }
     },
     "require": {
+        "ext-gmp": "*",
+        "ext-hash": "*",
+        "ext-sodium": "*",
         "rybakit/msgpack": "^0.7.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "^9.2"
+        "phpunit/phpunit": "^9.2",
+        "react/stream": "^1.1"
+    },
+    "suggest": {
+        "react/stream": "Required for streaming"
     }
 }

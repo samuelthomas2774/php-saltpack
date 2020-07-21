@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Saltpack\Armor;
 use Saltpack\Signing;
 use Saltpack\SignedMessageHeader;
+use Saltpack\SignStream;
+use Saltpack\VerifyStream;
 use Saltpack\Exceptions;
 
 final class SigningTest extends TestCase
@@ -63,7 +65,22 @@ final class SigningTest extends TestCase
 
     public function testSignStream(): void
     {
-        // TODO
+        $options = [];
+        $result = '';
+
+        $stream = new SignStream($this->keypair);
+
+        $stream->on('data', function (string $data) use (&$result) {
+            $result .= $data;
+        });
+
+        foreach (str_split(self::INPUT_STRING, 3) as $in) {
+            $stream->write($in);
+        }
+
+        $stream->end();
+
+        $this->assertEquals(self::SIGNED_HEX, bin2hex($result));
     }
 
     public function testVerify(): void
@@ -83,9 +100,17 @@ final class SigningTest extends TestCase
         $signed = hex2bin(self::SIGNED_HEX);
         $result = '';
 
-        foreach (Signing::verifyStream([$signed], $public_key) as $i => $decoded_chunk) {
-            $result .= $decoded_chunk;
+        $stream = new VerifyStream($public_key);
+
+        $stream->on('data', function (string $data) use (&$result) {
+            $result .= $data;
+        });
+
+        foreach (str_split($signed, 3) as $in) {
+            $stream->write($in);
         }
+
+        $stream->end();
 
         $this->assertEquals(self::INPUT_STRING, $result);
     }
