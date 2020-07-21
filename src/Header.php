@@ -18,7 +18,7 @@ class Header
     {
         // 1-3
         $data = $unwrapped ? $encoded : MessagePack::unpack($encoded);
-        $header_hash = hash('sha512', $data);
+        $header_hash = hash('sha512', $data, true);
         $data = MessagePack::unpack($data);
 
         // 4

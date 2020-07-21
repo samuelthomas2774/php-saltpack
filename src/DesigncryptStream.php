@@ -136,6 +136,8 @@ final class DesigncryptStream extends EventEmitter implements DuplexStreamInterf
             $this->emit('data', [$this->last_payload->decrypt(
                 $this->header, $this->sender_public_key, $this->payload_key, $this->index
             )]);
+        } else {
+            throw new Exceptions\VerifyError('No signcrypted payloads, message truncated?');
         }
 
         $this->closing = true;

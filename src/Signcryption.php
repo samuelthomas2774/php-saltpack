@@ -96,6 +96,10 @@ class Signcryption
             $output .= $payload->decrypt($header, $sender_public_key, $payload_key, $i);
         }
 
+        if (empty($messages)) {
+            throw new Exceptions\VerifyError('No signcrypted payloads, message truncated?');
+        }
+
         return $output;
     }
 

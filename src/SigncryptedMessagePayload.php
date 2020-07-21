@@ -79,7 +79,8 @@ class SigncryptedMessagePayload
         return new self($payload_secretbox, $final);
     }
 
-    public static function generateNonce(string $header_hash, int $index, bool $final): string {
+    public static function generateNonce(string $header_hash, int $index, bool $final): string
+    {
         // 1. Compute the packet nonce. Take the first 16 bytes of the header hash. If this is the final packet,
         // set the least significant bit of the last of those bytes to one (nonce[15] |= 0x01), otherwise set it
         // to zero (nonce[15] &= 0xfe). Finally, append the 8-byte unsigned big-endian packet number, where the
@@ -94,7 +95,8 @@ class SigncryptedMessagePayload
 
     public static function generateSignatureData(
         string $header_hash, string $nonce, bool $final, string $data
-    ): string {
+    ): string
+    {
         // 2. Concatenate several values to form the signature input:
         //     - the constant string saltpack encrypted signature
         //     - a null byte, 0x00
@@ -163,7 +165,7 @@ class SigncryptedMessagePayload
             // 5. Verify the detached signature from step #3 against the signature input. If the sender's public key
             // is all zero bytes, however, then the sender is anonymous, and verification is skipped.
             if (!sodium_crypto_sign_verify_detached($signature, $sign_data, $public_key)) {
-                throw new Exceptions\DecryptionError('Invalid signature');
+                throw new Exceptions\VerifyError('Invalid signature');
             }
         }
 

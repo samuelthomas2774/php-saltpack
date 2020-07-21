@@ -134,6 +134,8 @@ final class DecryptStream extends EventEmitter implements DuplexStreamInterface
             $this->emit('data', [$this->last_payload->decrypt(
                 $this->header, $this->recipient, $this->payload_key, $this->index
             )]);
+        } else {
+            throw new Exceptions\VerifyError('No encrypted payloads, message truncated?');
         }
 
         $this->closing = true;

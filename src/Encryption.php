@@ -103,6 +103,10 @@ class Encryption
             $output .= $payload->decrypt($header, $recipient, $payload_key, $i);
         }
 
+        if (empty($messages)) {
+            throw new Exceptions\VerifyError('No encrypted payloads, message truncated?');
+        }
+
         return $output;
     }
 

@@ -64,6 +64,10 @@ class Signing
             $output .= $payload->data;
         }
 
+        if (empty($messages)) {
+            throw new Exceptions\VerifyError('No signed payloads, message truncated?');
+        }
+
         return $output;
     }
 

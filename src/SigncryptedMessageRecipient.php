@@ -88,7 +88,8 @@ class SigncryptedMessageRecipient
 
     public static function generateRecipientIdentifierForSender(
         string $public_key, string $ephemeral_private_key, string $recipient_index
-    ) {
+    ): array
+    {
         // For Curve25519 recipient public keys, first derive a shared symmetric key by boxing 32 zero bytes with
         // the recipient public key, the ephemeral private key, and the nonce saltpack_derived_sboxkey, and taking
         // the last 32 bytes of the resulting box.
@@ -108,7 +109,8 @@ class SigncryptedMessageRecipient
 
     public static function generateRecipientIdentifierForRecipient(
         string $ephemeral_public_key, string $private_key, string $recipient_index
-    ) {
+    ): array
+    {
         // For Curve25519 recipient public keys, first derive a shared symmetric key by boxing 32 zero bytes with
         // the recipient public key, the ephemeral private key, and the nonce saltpack_derived_sboxkey, and taking
         // the last 32 bytes of the resulting box.

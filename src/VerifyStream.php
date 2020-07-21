@@ -124,6 +124,8 @@ final class VerifyStream extends EventEmitter implements DuplexStreamInterface
             }
 
             $this->emit('data', [$this->last_payload->data]);
+        } else {
+            throw new Exceptions\VerifyError('No signed payloads, message truncated?');
         }
 
         $this->closing = true;

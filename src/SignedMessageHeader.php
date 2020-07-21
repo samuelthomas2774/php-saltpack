@@ -96,7 +96,7 @@ class SignedMessageHeader extends Header
         return [$header_hash, MessagePack::pack($encoded, PackOptions::FORCE_BIN)];
     }
 
-    public static function decode(string $encoded, bool $unwrapped = false)
+    public static function decode(string $encoded, bool $unwrapped = false): SignedMessageHeader
     {
         list($header_hash, $data) = parent::decode($encoded, $unwrapped);
 
@@ -122,7 +122,7 @@ class SignedMessageHeader extends Header
         return sodium_crypto_sign_detached($sign_data, $private_key);
     }
 
-    public function verifyDetached(string $signature, string $data, string $public_key)
+    public function verifyDetached(string $signature, string $data, string $public_key): void
     {
         if ($this->attached) {
             throw new BadMethodCallException('Header $attached is true');
