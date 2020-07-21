@@ -38,7 +38,7 @@ final class EncryptStream extends EventEmitter implements DuplexStreamInterface
 
     private $index = 0;
 
-    public function __construct(string $keypair, array $recipients_keys)
+    public function __construct(?string $keypair, array $recipients_keys)
     {
         // 1. Generate a random 32-byte payload key.
         $this->payload_key = Encryption::$debug_fix_key ?? random_bytes(32);

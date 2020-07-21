@@ -7,6 +7,8 @@ namespace Saltpack;
 use MessagePack\MessagePack;
 use MessagePack\PackOptions;
 use MessagePack\BufferUnpacker;
+use React\Stream\CompositeStream;
+use React\Stream\DuplexStreamInterface;
 
 class Signing
 {
@@ -65,6 +67,48 @@ class Signing
         return $output;
     }
 
+    public static function signStream(string $keypair): SignStream
+    {
+        return new SignStream($keypair);
+    }
+
+    public static function verifyStream(string $public_key): VerifyStream
+    {
+        return new VerifyStream($public_key);
+    }
+
+    public static function signAndArmor(string $data, string $keypair): string
+    {
+        $signed = self::sign($data, $keypair);
+        return Armor::armor($signed, ['message_type' => 'SIGNED MESSAGE']);
+    }
+
+    public static function verifyArmored(string $data, string $public_key): string
+    {
+        $dearmored = Armor::dearmor($data);
+        return self::verify($dearmored, $public_key);
+    }
+
+    public static function signAndArmorStream(string $keypair): DuplexStreamInterface
+    {
+        $sign = new SignStream($keypair, $recipients_keys);
+        $armor = new ArmorStream(['message_type' => 'SIGNED MESSAGE']);
+
+        $sign->pipe($armor);
+
+        return new CompositeStream($sign, $armor);
+    }
+
+    public static function verifyArmoredStream(string $public_key): DuplexStreamInterface
+    {
+        $dearmor = new DearmorStream();
+        $verify = new VerifyStream($public_key);
+
+        $dearmor->pipe($verify);
+
+        return new CompositeStream($dearmor, $verify);
+    }
+
     public static function signDetached(string $data, string $keypair, &$debug = null): string
     {
         $public_key = sodium_crypto_sign_publickey($keypair);
@@ -88,5 +132,17 @@ class Signing
         $header = SignedMessageHeader::decode($header_data, true);
 
         $header->verifyDetached($signature, $data, $public_key);
+    }
+
+    public static function signDetachedAndArmor(string $data, string $keypair): string
+    {
+        $signed = self::signDetached($data, $keypair, $recipients_keys);
+        return Armor::armor($signed, ['message_type' => 'DETACHED SIGNATURE']);
+    }
+
+    public static function verifyDetachedArmored(string $signature, string $public_key): string
+    {
+        $dearmored = Armor::dearmor($signature);
+        return self::verifyDetached($dearmored, $data, $public_key);
     }
 }

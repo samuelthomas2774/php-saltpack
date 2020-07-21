@@ -99,6 +99,11 @@ class Armor
         return $header . $joined . $footer;
     }
 
+    public static function armorStream(array $options = []): ArmorStream
+    {
+        return new ArmorStream($options);
+    }
+
     /** Decode the ascii-armored data from the specified +input_chars+ using the given +options+. */
     public static function dearmor(
         string $input, array $options = [], ?string &$remaining = null, ?array &$header_info = null
@@ -137,6 +142,11 @@ class Armor
         }
 
         return $output;
+    }
+
+    public static function dearmorStream(array $options = []): DearmorStream
+    {
+        return new DearmorStream($options);
     }
 
     /** Encode a single block of ascii-armored output from +bytes_block+ using the specified +alphabet+ and +shift+. */

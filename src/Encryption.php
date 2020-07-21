@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Saltpack;
 
 use MessagePack\BufferUnpacker;
+use React\Stream\CompositeStream;
+use React\Stream\DuplexStreamInterface;
 
 class Encryption
 {
@@ -102,5 +104,47 @@ class Encryption
         }
 
         return $output;
+    }
+
+    public static function encryptStream(?string $keypair, array $recipients_keys): EncryptStream
+    {
+        return new EncryptStream($keypair, $recipients_keys);
+    }
+
+    public static function decryptStream(?string $keypair): DecryptStream
+    {
+        return new DecryptStream($keypair);
+    }
+
+    public static function encryptAndArmor(string $data, ?string $keypair, array $recipients_keys): string
+    {
+        $encrypted = self::encrypt($data, $keypair, $recipients_keys);
+        return Armor::armor($encrypted, ['message_type' => 'ENCRYPTED MESSAGE']);
+    }
+
+    public static function dearmorAndDecrypt(string $data, string $keypair): string
+    {
+        $dearmored = Armor::dearmor($data);
+        return self::decrypt($dearmored, $keypair);
+    }
+
+    public static function encryptAndArmorStream(?string $keypair, array $recipients_keys): DuplexStreamInterface
+    {
+        $encrypt = new EncryptStream($keypair, $recipients_keys);
+        $armor = new ArmorStream(['message_type' => 'ENCRYPTED MESSAGE']);
+
+        $encrypt->pipe($armor);
+
+        return new CompositeStream($encrypt, $armor);
+    }
+
+    public static function dearmorAndDecryptStream(?string $keypair): DuplexStreamInterface
+    {
+        $dearmor = new DearmorStream();
+        $decrypt = new DecryptStream($keypair);
+
+        $dearmor->pipe($decrypt);
+
+        return new CompositeStream($dearmor, $decrypt);
     }
 }
