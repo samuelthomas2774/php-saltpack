@@ -38,7 +38,7 @@ class Signing
         }, $payloads));
     }
 
-    public static function verify(string $signed, string $public_key): string
+    public static function verify(string $signed, ?string &$public_key): string
     {
         $unpacker = new BufferUnpacker();
         $unpacker->reset($signed);
@@ -47,11 +47,17 @@ class Signing
         $header_data = array_shift($messages);
         $header = SignedMessageHeader::decode($header_data, true);
 
+        if ($public_key === null) {
+            $public_key = $header->public_key;
+        } elseif ($public_key !== $header->public_key) {
+            throw new Exceptions\VerifyError('Sender public key doesn\'t match');
+        }
+
         $output = '';
 
         foreach ($messages as $i => $message) {
             $payload = SignedMessagePayload::decode($message, true);
-            $payload->verify($header, $public_key, $i);
+            $payload->verify($header, $header->public_key, $i);
 
             $final = count($messages) === ($i + 1);
             if ($payload->final && !$final) {
@@ -76,7 +82,7 @@ class Signing
         return new SignStream($keypair);
     }
 
-    public static function verifyStream(string $public_key): VerifyStream
+    public static function verifyStream(?string &$public_key): VerifyStream
     {
         return new VerifyStream($public_key);
     }
@@ -87,7 +93,7 @@ class Signing
         return Armor::armor($signed, ['message_type' => 'SIGNED MESSAGE']);
     }
 
-    public static function verifyArmored(string $data, string $public_key): string
+    public static function verifyArmored(string $data, ?string &$public_key): string
     {
         $dearmored = Armor::dearmor($data);
         return self::verify($dearmored, $public_key);
@@ -103,7 +109,7 @@ class Signing
         return new CompositeStream($sign, $armor);
     }
 
-    public static function verifyArmoredStream(string $public_key): DuplexStreamInterface
+    public static function verifyArmoredStream(?string &$public_key): DuplexStreamInterface
     {
         $dearmor = new DearmorStream();
         $verify = new VerifyStream($public_key);
@@ -126,7 +132,7 @@ class Signing
         return $header->encoded . $signature;
     }
 
-    public static function verifyDetached(string $signature, string $data, string $public_key): void
+    public static function verifyDetached(string $signature, string $data, ?string &$public_key): void
     {
         $unpacker = new BufferUnpacker();
         $unpacker->reset($signature);
@@ -135,7 +141,13 @@ class Signing
 
         $header = SignedMessageHeader::decode($header_data, true);
 
-        $header->verifyDetached($signature, $data, $public_key);
+        $header->verifyDetached($signature, $data, $header->public_key);
+
+        if ($public_key === null) {
+            $public_key = $header->public_key;
+        } elseif ($public_key !== $header->public_key) {
+            throw new Exceptions\VerifyError('Sender public key doesn\'t match');
+        }
     }
 
     public static function signDetachedAndArmor(string $data, string $keypair): string
@@ -144,7 +156,7 @@ class Signing
         return Armor::armor($signed, ['message_type' => 'DETACHED SIGNATURE']);
     }
 
-    public static function verifyDetachedArmored(string $signature, string $public_key): string
+    public static function verifyDetachedArmored(string $signature, string $data, ?string &$public_key): string
     {
         $dearmored = Armor::dearmor($signature);
         return self::verifyDetached($dearmored, $data, $public_key);

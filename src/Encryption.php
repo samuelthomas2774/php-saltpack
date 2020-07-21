@@ -77,10 +77,10 @@ class Encryption
         list($payload_key, $recipient) = $header->decryptPayloadKey($keypair);
         $sender_public_key = $header->decryptSender($payload_key);
 
-        if (isset($sender) && $sender !== $sender_public_key) {
-            throw new Exception\VerifyError('Sender public key doesn\'t match');
-        } else if ($header->public_key !== $sender_public_key) {
+        if ($sender === null) {
             $sender = $sender_public_key;
+        } elseif ($sender !== $sender_public_key) {
+            throw new Exceptions\VerifyError('Sender public key doesn\'t match');
         }
 
         $recipient->generateMacKeyForRecipient(
@@ -115,9 +115,9 @@ class Encryption
         return new EncryptStream($keypair, $recipients_keys);
     }
 
-    public static function decryptStream(?string $keypair): DecryptStream
+    public static function decryptStream(?string $keypair, string &$sender = null): DecryptStream
     {
-        return new DecryptStream($keypair);
+        return new DecryptStream($keypair, $sender);
     }
 
     public static function encryptAndArmor(string $data, ?string $keypair, array $recipients_keys): string
@@ -142,10 +142,10 @@ class Encryption
         return new CompositeStream($encrypt, $armor);
     }
 
-    public static function dearmorAndDecryptStream(?string $keypair): DuplexStreamInterface
+    public static function dearmorAndDecryptStream(?string $keypair, string &$sender = null): DuplexStreamInterface
     {
         $dearmor = new DearmorStream();
-        $decrypt = new DecryptStream($keypair);
+        $decrypt = new DecryptStream($keypair, $sender);
 
         $dearmor->pipe($decrypt);
 

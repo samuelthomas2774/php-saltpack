@@ -86,19 +86,31 @@ final class EncryptionTest extends TestCase
 
     public function testDecrypt(): void
     {
+        $sender_public_key = sodium_crypto_box_publickey($this->keypair_alice);
+
         $encrypted = hex2bin(self::ENCRYPTED_HEX);
         $data = Encryption::decrypt($encrypted, $this->keypair_bob, $sender_public_key);
 
-        $this->assertEquals(sodium_crypto_box_publickey($this->keypair_alice), $sender_public_key);
         $this->assertEquals(self::INPUT_STRING, $data);
+    }
+
+    public function testDecryptDoesntRequireSenderPublicKey(): void
+    {
+        $encrypted = hex2bin(self::ENCRYPTED_HEX);
+        $data = Encryption::decrypt($encrypted, $this->keypair_bob, $sender_public_key);
+
+        $this->assertEquals(self::INPUT_STRING, $data);
+        $this->assertEquals(sodium_crypto_box_publickey($this->keypair_alice), $sender_public_key);
     }
 
     public function testDecryptStream(): void
     {
+        $sender_public_key = sodium_crypto_box_publickey($this->keypair_alice);
+
         $encrypted = hex2bin(self::ENCRYPTED_HEX);
         $result = '';
 
-        $stream = new DecryptStream($this->keypair_bob);
+        $stream = new DecryptStream($this->keypair_bob, $sender_public_key);
 
         $stream->on('data', function (string $data) use (&$result) {
             $result .= $data;
@@ -110,8 +122,30 @@ final class EncryptionTest extends TestCase
 
         $stream->end();
 
-        $this->assertEquals(sodium_crypto_box_publickey($this->keypair_alice), $stream->sender_public_key);
         $this->assertEquals(self::INPUT_STRING, $result);
+        $this->assertEquals(sodium_crypto_box_publickey($this->keypair_alice), $stream->sender_public_key);
+    }
+
+    public function testDecryptStreamDoesntRequireSenderPublicKey(): void
+    {
+        $encrypted = hex2bin(self::ENCRYPTED_HEX);
+        $result = '';
+
+        $stream = new DecryptStream($this->keypair_bob, $sender_public_key);
+
+        $stream->on('data', function (string $data) use (&$result) {
+            $result .= $data;
+        });
+
+        foreach (str_split($encrypted, 3) as $in) {
+            $stream->write($in);
+        }
+
+        $stream->end();
+
+        $this->assertEquals(self::INPUT_STRING, $result);
+        $this->assertEquals(sodium_crypto_box_publickey($this->keypair_alice), $stream->sender_public_key);
+        $this->assertEquals(sodium_crypto_box_publickey($this->keypair_alice), $sender_public_key);
     }
 
     public function testDecryptWithWrongKeypairFails(): void

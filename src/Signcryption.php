@@ -108,9 +108,9 @@ class Signcryption
         return new SigncryptStream($keypair, $recipients_keys);
     }
 
-    public static function decryptStream(?string $keypair): DesigncryptStream
+    public static function decryptStream(?string $keypair, string &$sender = null): DesigncryptStream
     {
-        return new DesigncryptStream($keypair);
+        return new DesigncryptStream($keypair, $sender);
     }
 
     public static function encryptAndArmor(string $data, ?string $keypair, array $recipients_keys): string
@@ -119,10 +119,10 @@ class Signcryption
         return Armor::armor($encrypted, ['message_type' => 'ENCRYPTED MESSAGE']);
     }
 
-    public static function dearmorAndDecrypt(string $data, string $keypair): string
+    public static function dearmorAndDecrypt(string $data, string $keypair, string &$sender = null): string
     {
         $dearmored = Armor::dearmor($data);
-        return self::decrypt($dearmored, $keypair);
+        return self::decrypt($dearmored, $keypair, $sender);
     }
 
     public static function encryptAndArmorStream(?string $keypair, array $recipients_keys): DuplexStreamInterface
@@ -135,10 +135,10 @@ class Signcryption
         return new CompositeStream($encrypt, $armor);
     }
 
-    public static function dearmorAndDecryptStream(?string $keypair): DuplexStreamInterface
+    public static function dearmorAndDecryptStream(?string $keypair, string &$sender = null): DuplexStreamInterface
     {
         $dearmor = new DearmorStream();
-        $decrypt = new DesigncryptStream($keypair);
+        $decrypt = new DesigncryptStream($keypair, $sender);
 
         $dearmor->pipe($decrypt);
 

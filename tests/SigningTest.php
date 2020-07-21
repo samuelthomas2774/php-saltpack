@@ -93,6 +93,15 @@ final class SigningTest extends TestCase
         $this->assertEquals(self::INPUT_STRING, $data);
     }
 
+    public function testVerifyDoesntRequireSenderPublicKey(): void
+    {
+        $signed = hex2bin(self::SIGNED_HEX);
+        $data = Signing::verify($signed, $public_key);
+
+        $this->assertEquals(self::INPUT_STRING, $data);
+        $this->assertEquals(bin2hex(sodium_crypto_sign_publickey($this->keypair)), bin2hex($public_key));
+    }
+
     public function testVerifyStream(): void
     {
         $public_key = sodium_crypto_sign_publickey($this->keypair);
@@ -113,6 +122,29 @@ final class SigningTest extends TestCase
         $stream->end();
 
         $this->assertEquals(self::INPUT_STRING, $result);
+    }
+
+    public function testVerifyStreamDoesntRequireSenderPublicKey(): void
+    {
+        $public_key = sodium_crypto_sign_publickey($this->keypair);
+
+        $signed = hex2bin(self::SIGNED_HEX);
+        $result = '';
+
+        $stream = new VerifyStream();
+
+        $stream->on('data', function (string $data) use (&$result) {
+            $result .= $data;
+        });
+
+        foreach (str_split($signed, 3) as $in) {
+            $stream->write($in);
+        }
+
+        $stream->end();
+
+        $this->assertEquals(self::INPUT_STRING, $result);
+        $this->assertEquals(bin2hex($public_key), bin2hex($stream->public_key));
     }
 
     public function testVerifyWithWrongPublicKeyFails(): void
@@ -148,6 +180,14 @@ final class SigningTest extends TestCase
         Signing::verifyDetached($signature, self::INPUT_STRING, $public_key);
 
         $this->assertEquals(1, 1);
+    }
+
+    public function testVerifyDetachedDoesntRequireSenderPublicKey(): void
+    {
+        $signature = hex2bin(self::DETACHED_SIGNATURE_HEX);
+        Signing::verifyDetached($signature, self::INPUT_STRING, $public_key);
+
+        $this->assertEquals(sodium_crypto_sign_publickey($this->keypair), $public_key);
     }
 
     public function testVerifyDetachedWithWrongPublicKeyFails(): void

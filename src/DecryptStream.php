@@ -28,12 +28,14 @@ final class DecryptStream extends EventEmitter implements DuplexStreamInterface
     private $payload_key = null;
     private $recipient = null;
     private $sender_public_key = null;
+    private $sender;
     private $last_payload = null;
     private $index = -1;
 
-    public function __construct(string $keypair)
+    public function __construct(string $keypair, ?string &$sender = null)
     {
         $this->keypair = $keypair;
+        $this->sender = &$sender;
         $this->unpacker = new BufferUnpacker();
 
         $this->resume();
@@ -89,6 +91,12 @@ final class DecryptStream extends EventEmitter implements DuplexStreamInterface
 
             list($this->payload_key, $this->recipient) = $this->header->decryptPayloadKey($this->keypair);
             $this->sender_public_key = $this->header->decryptSender($this->payload_key);
+
+            if ($this->sender === null) {
+                $this->sender = $this->sender_public_key;
+            } elseif ($this->sender !== $this->sender_public_key) {
+                throw new Exceptions\VerifyError('Sender public key doesn\'t match');
+            }
 
             $this->recipient->generateMacKeyForRecipient(
                 $this->header->hash, $this->header->public_key, $this->sender_public_key,

@@ -23,17 +23,15 @@ final class VerifyStream extends EventEmitter implements DuplexStreamInterface
 
     private $unpacker;
 
+    /** @var string|null $public_key */
     private $public_key;
     private $header = null;
-    private $payload_key = null;
-    private $recipient = null;
-    private $sender_public_key = null;
     private $last_payload = null;
     private $index = -1;
 
-    public function __construct(string $public_key)
+    public function __construct(?string &$public_key = null)
     {
-        $this->public_key = $public_key;
+        $this->public_key = &$public_key;
         $this->unpacker = new BufferUnpacker();
 
         $this->resume();
@@ -41,9 +39,9 @@ final class VerifyStream extends EventEmitter implements DuplexStreamInterface
 
     public function __get(string $key)
     {
-        if ($key === 'sender_public_key') {
-            if ($this->sender_public_key === null) throw new BadMethodCallException('Header hasn\'t been decoded yet');
-            return $this->sender_public_key;
+        if ($key === 'public_key') {
+            if ($this->header->public_key === null) throw new BadMethodCallException('Header hasn\'t been decoded yet');
+            return $this->header->public_key;
         }
 
         throw new BadMethodCallException('Unknown property "' . $key . '"');
@@ -86,6 +84,12 @@ final class VerifyStream extends EventEmitter implements DuplexStreamInterface
         if ($this->header === null && count($messages) > 0) {
             $header_data = array_shift($messages);
             $this->header = SignedMessageHeader::decode($header_data, true);
+
+            if ($this->public_key === null) {
+                $this->public_key = $this->header->public_key;
+            } elseif ($this->public_key !== $this->header->public_key) {
+                throw new Exceptions\VerifyError('Sender public key doesn\'t match');
+            }
         }
 
         foreach ($messages as $message) {
@@ -100,7 +104,7 @@ final class VerifyStream extends EventEmitter implements DuplexStreamInterface
             }
 
             $payload = SignedMessagePayload::decode($message, true);
-            $payload->verify($this->header, $this->public_key, $this->index);
+            $payload->verify($this->header, $this->header->public_key, $this->index);
 
             $this->last_payload = $payload;
         }
