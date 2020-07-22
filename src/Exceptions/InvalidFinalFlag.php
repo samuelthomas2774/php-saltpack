@@ -2,7 +2,5 @@
 
 namespace Saltpack\Exceptions;
 
-use UnexpectedValueException;
-
-class InvalidFinalFlag extends UnexpectedValueException
+class InvalidFinalFlag extends VerifyError
 {}
